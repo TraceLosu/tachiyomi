@@ -580,8 +580,22 @@ class MangaInfoScreenModel(
     ) {
         when (action) {
             ChapterDownloadAction.START -> {
-                startDownload(items.map { it.chapter }, false)
-                if (items.any { it.downloadState == Download.State.ERROR }) {
+                val filteredItems: List<ChapterItem> = if (downloadPreferences.skipDupe().get()) {
+                    mutableListOf<ChapterItem>().apply {
+                        val firstChapter = items.first().chapter
+                        for (chapterItems in items.groupBy { it.chapter.chapterNumber }.values) {
+                            add(
+                                chapterItems.find { it.chapter.scanlator == firstChapter.scanlator }
+                                    ?: chapterItems.first(),
+                            )
+                        }
+                    }
+                } else {
+                    items
+                }
+
+                startDownload(filteredItems.map { it.chapter }, false)
+                if (filteredItems.any { it.downloadState == Download.State.ERROR }) {
                     downloadManager.startDownloads()
                 }
             }
@@ -613,14 +627,12 @@ class MangaInfoScreenModel(
             if (downloadPreferences.skipDupe().get()) {
                 mutableListOf<Chapter>().apply {
                     val firstChapter = validChapters.firstOrNull() ?: return
-                    for (chapterEntry in validChapters.groupBy { it.chapterNumber }) {
+                    for (chapters in validChapters.groupBy { it.chapterNumber }.values) {
                         if (size == amount) break
-                        if (any { it.chapterNumber == chapterEntry.key }) continue
 
                         add(
-                            chapterEntry.value.find { it.id == firstChapter.id }
-                                ?: chapterEntry.value.find { it.scanlator == firstChapter.scanlator }
-                                ?: chapterEntry.value.first(),
+                            chapters.find { it.scanlator == firstChapter.scanlator }
+                                ?: chapters.first(),
                         )
                     }
                 }
