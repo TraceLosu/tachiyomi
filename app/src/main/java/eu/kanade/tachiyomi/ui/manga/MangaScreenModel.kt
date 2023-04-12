@@ -600,13 +600,35 @@ class MangaInfoScreenModel(
     }
 
     fun runDownloadAction(action: DownloadAction) {
-        val chaptersToDownload = when (action) {
-            DownloadAction.NEXT_1_CHAPTER -> getUnreadChaptersSorted().take(1)
-            DownloadAction.NEXT_5_CHAPTERS -> getUnreadChaptersSorted().take(5)
-            DownloadAction.NEXT_10_CHAPTERS -> getUnreadChaptersSorted().take(10)
-            DownloadAction.NEXT_25_CHAPTERS -> getUnreadChaptersSorted().take(25)
-            DownloadAction.UNREAD_CHAPTERS -> getUnreadChapters()
+        val validChapters = getUnreadChaptersSorted()
+        val amount = when (action) {
+            DownloadAction.NEXT_1_CHAPTER -> 1
+            DownloadAction.NEXT_5_CHAPTERS -> 5
+            DownloadAction.NEXT_10_CHAPTERS -> 10
+            DownloadAction.NEXT_25_CHAPTERS -> 25
+            DownloadAction.UNREAD_CHAPTERS -> validChapters.size
         }
+
+        val chaptersToDownload: List<Chapter> = kotlin.run {
+            if (downloadPreferences.skipDupe().get()) {
+                mutableListOf<Chapter>().apply {
+                    val firstChapter = validChapters.firstOrNull() ?: return
+                    for (chapterEntry in validChapters.groupBy { it.chapterNumber }) {
+                        if (size == amount) break
+                        if (any { it.chapterNumber == chapterEntry.key }) continue
+
+                        add(
+                            chapterEntry.value.find { it.id == firstChapter.id }
+                                ?: chapterEntry.value.find { it.scanlator == firstChapter.scanlator }
+                                ?: chapterEntry.value.first(),
+                        )
+                    }
+                }
+            } else {
+                validChapters.take(amount)
+            }
+        }
+
         if (chaptersToDownload.isNotEmpty()) {
             startDownload(chaptersToDownload, false)
         }

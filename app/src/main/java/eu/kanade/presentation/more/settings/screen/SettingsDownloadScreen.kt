@@ -60,6 +60,10 @@ object SettingsDownloadScreen : SearchableSettings {
                 title = stringResource(R.string.split_tall_images),
                 subtitle = stringResource(R.string.split_tall_images_summary),
             ),
+            Preference.PreferenceItem.SwitchPreference(
+                pref = downloadPreferences.skipDupe(),
+                title = stringResource(R.string.pref_skip_dupe_chapters),
+            ),
             getDeleteChaptersGroup(
                 downloadPreferences = downloadPreferences,
                 categories = allCategories,
