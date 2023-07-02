@@ -38,6 +38,8 @@ class LibraryPreferences(
         ),
     )
 
+    fun libraryReadDuplicateChapters() = preferenceStore.getBoolean("pref_library_mark_duplicate_chapters", false)
+
     fun leadingExpectedDays() = preferenceStore.getInt("pref_library_before_expect_key", 1)
     fun followingExpectedDays() = preferenceStore.getInt("pref_library_after_expect_key", 1)
 

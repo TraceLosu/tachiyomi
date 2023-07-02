@@ -14,6 +14,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkQuery
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import eu.kanade.domain.chapter.interactor.SetReadStatus
 import eu.kanade.domain.chapter.interactor.SyncChaptersWithSource
 import eu.kanade.domain.chapter.interactor.SyncChaptersWithTrackServiceTwoWay
 import eu.kanade.domain.manga.interactor.UpdateManga
@@ -101,6 +102,7 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
     private val getTracks: GetTracks = Injekt.get()
     private val insertTrack: InsertTrack = Injekt.get()
     private val syncChaptersWithTrackServiceTwoWay: SyncChaptersWithTrackServiceTwoWay = Injekt.get()
+    private val setReadStatus: SetReadStatus = Injekt.get()
 
     private val notifier = LibraryUpdateNotifier(context)
 
@@ -262,7 +264,17 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                                         else -> {
                                             try {
                                                 val newChapters = updateManga(manga)
-                                                    .sortedByDescending { it.sourceOrder }
+                                                    .sortedByDescending { it.sourceOrder }.run {
+                                                        if (libraryPreferences.libraryReadDuplicateChapters().get()) {
+                                                            val readChapters = getChapterByMangaId.await(manga.id).filter { it.read }
+                                                            val newReadChapters = this.filter { chapter -> readChapters.any { it.chapterNumber == chapter.chapterNumber } }
+                                                                .also { setReadStatus.await(true, *it.toTypedArray()) }
+
+                                                            this.filterNot { newReadChapters.contains(it) }
+                                                        } else {
+                                                            this
+                                                        }
+                                                    }
 
                                                 if (newChapters.isNotEmpty()) {
                                                     val categoryIds = getCategories.await(manga.id).map { it.id }
